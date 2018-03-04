@@ -1,0 +1,97 @@
+
+package handler;
+
+import org.eclipse.e4.core.di.annotations.Execute;
+import org.eclipse.e4.ui.model.application.ui.basic.MPart;
+import org.eclipse.e4.ui.workbench.modeling.EPartService;
+import org.eclipse.zest.core.viewers.GraphViewer;
+
+import analysis.ProjectAnalyzer;
+import analysis.ProjectAnalyzerGoBackToClass;
+import analysis.ProjectAnalyzerGoBackToPackage;
+import graph.builder.GModelBuilder;
+import graph.model.node.GClassNode;
+import graph.model.node.GMethodNode;
+import graph.model.node.GPackageNode;
+import view.CloneMapView;
+
+public class GoBackHandler {
+	@Execute
+	public void execute(EPartService partService) {
+		System.out.println("\nGoBackHandler executing...");
+
+		MPart findPart = partService.findPart(CloneMapView.VIEW_ID);
+		Object object = findPart.getObject();
+		if (object instanceof CloneMapView) {
+			CloneMapView v = (CloneMapView) object;
+			GraphViewer gViewer = v.getGraphViewer();
+			System.out.println("My Graph Viewer: " + gViewer);
+			String nodeClicked = v.selectedNodeName;
+			ProjectAnalyzerGoBackToPackage analyzerP = new ProjectAnalyzerGoBackToPackage();
+			ProjectAnalyzerGoBackToClass analyzerC = new ProjectAnalyzerGoBackToClass();
+			System.out.println("Current Source Node, Before executing 'Go Back': " + nodeClicked);
+
+			GModelBuilder.instance().reset();
+
+			/*
+			 * every element of each list corresponds to the same element of the other list
+			 * name list vs GNode list
+			 * 
+			 * i = last element in list
+			 * checks if element before i (last element in list) and that the element before it exists
+			 * 
+			 * if it exists, the node with that name gets revisited
+			 * then removes the last node clicked from the list, in case the user wants to go back to the node
+			 * 2 before the original
+			 * 
+			 * if it doesn't, that means it will go back to the graph as a whole
+			 * and will reset the graph to show all nodes
+			 * then removes the last node clicked from the list, in case the user wants to go back to the node
+			 * 2 before the original
+			 * 
+			*/
+			int mostRecentNode = (v.listOfNodesClickedNames.size() - 1);
+			
+			if (mostRecentNode - 1 >= 0) {
+				if (v.listOfNodesClicked.get(mostRecentNode - 1) instanceof GPackageNode) {
+					analyzerP.setSelected(v.listOfNodesClickedNames.get(mostRecentNode - 1));
+					System.out.println("Going back to Package '" + v.listOfNodesClickedNames.get(mostRecentNode - 1) + "' as a source node.");
+					analyzerP.analyze();
+					v.listOfNodesClickedNames.remove(mostRecentNode);
+					v.listOfNodesClicked.remove(mostRecentNode);
+					gViewer.setInput(GModelBuilder.instance().getNodes());
+				}
+
+				else if (v.listOfNodesClicked.get(mostRecentNode - 1) instanceof GClassNode) {
+					analyzerC.setSelected(v.listOfNodesClickedNames.get(mostRecentNode - 1));
+					System.out.println("Going back to Class '" + v.listOfNodesClickedNames.get(mostRecentNode - 1) + "' as a source node.");
+					analyzerC.analyze();
+					v.listOfNodesClickedNames.remove(mostRecentNode);
+					v.listOfNodesClicked.remove(mostRecentNode);
+					gViewer.setInput(GModelBuilder.instance().getNodes());
+				}
+				else if (v.listOfNodesClicked.get(mostRecentNode - 1) instanceof GMethodNode) {
+					v.listOfNodesClickedNames.remove(mostRecentNode);
+					v.listOfNodesClicked.remove(mostRecentNode);
+					gViewer.setInput(GModelBuilder.instance().getNodes());
+					//basically, if they double click the same method twice, and click the go back button,
+					//it will take them to the previous time they clicked the go button
+					//if they click for example classA>m1>m1>m1 it will take 3 "go back" clicks to go back to the class
+				}
+				
+				
+				
+			} else if (mostRecentNode - 1 < 0) {
+				System.out.println("Going back to base graph.");
+				ProjectAnalyzer pAnalyzer = new ProjectAnalyzer();
+				pAnalyzer.analyze();
+				v.listOfNodesClickedNames.clear();
+				v.listOfNodesClicked.clear();
+				gViewer.setInput(GModelBuilder.instance().getNodes());
+			}
+
+			
+		}
+		System.out.println("...done.\n");
+	}
+}

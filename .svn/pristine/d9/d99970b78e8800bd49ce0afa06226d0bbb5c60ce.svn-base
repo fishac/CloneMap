@@ -1,0 +1,62 @@
+/*
+ * @(#) MethodVisitor.java
+ *
+ * Copyright 2015-2018 The Software Analysis Laboratory
+ * Computer Science, The University of Nebraska at Omaha
+ * 6001 Dodge Street, Omaha, NE 68182.
+ */
+package visitor;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.PackageDeclaration;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+
+public class SelectedMethodNameGrabber extends ASTVisitor {
+	public String methodNodeName = null;
+	public String classNodeName = null;
+	public String pkgNodeName = null;
+	public IPackageFragment iPackage;
+	public String iClassName;
+
+	public SelectedMethodNameGrabber(String methNodeName, IPackageFragment iPackage, String iClassName) {
+		this.methodNodeName = methNodeName;
+		this.iPackage = iPackage;
+		this.iClassName = iClassName;
+	}
+	
+	@Override
+	public boolean visit(MethodDeclaration methDecl) {
+			
+		if(methDecl.getName().getFullyQualifiedName().equals(this.methodNodeName)) {
+			if(methDecl != null){
+				
+			
+				
+		
+				classNodeName = this.iClassName.replaceAll(".java", "");
+				pkgNodeName = iPackage.getElementName();
+			
+			
+			return false;
+			}
+		}
+		return true;
+		
+	}
+
+	
+
+	public static ASTNode getOuterClass(ASTNode node) {
+		do {
+			// Keep searching if this node is not null and
+			// it is not a type declaration node and
+			// it is a child of compilation unit node.
+			node = node.getParent();
+		} while (node != null && node.getNodeType() != ASTNode.TYPE_DECLARATION && //
+				((AbstractTypeDeclaration) node).isPackageMemberTypeDeclaration());
+		return node;
+	}
+}

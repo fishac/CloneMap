@@ -1,0 +1,184 @@
+package treenode;
+
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.ForStatement;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.zest.core.widgets.Graph;
+import org.eclipse.zest.core.widgets.GraphNode;
+
+import ch.uzh.ifi.seal.changedistiller.treedifferencing.Node;
+import graph.builder.GModelBuilder;
+import graph.model.GConnection;
+import graph.model.GNode;
+import graph.model.node.GMethodNode;
+import graph.model.node.GSubMethodNode;
+import util.UtilNode;
+
+public class EnhancedForEachStatementTreeNodeAnalyzer extends ASTVisitor {
+
+	GMethodNode originMNode = null;
+	GSubMethodNode originSubMNode = null;
+	Map<String, GNode> nodeMap = new HashMap<String, GNode>();
+	Node rootNode = null;
+	Node currentNode = null;
+
+	public EnhancedForEachStatementTreeNodeAnalyzer(Node rootNode, Node currentNode) {
+		this.rootNode = rootNode;
+		this.currentNode = currentNode;
+	}
+
+	public void analyze() {
+		addSrcNodeInstanceList();
+		if (originMNode != null)
+			addConnection(originMNode, currentNode);
+		else if (originSubMNode != null) {
+			addConnection(originSubMNode, currentNode);
+		}
+	}
+
+	void addConnection(GNode originNode, Node currentNode) {
+		String nodeName = getName(currentNode);
+		int startPos = currentNode.hashCode();
+		// Add a node
+		GSubMethodNode dstGNode = createGNode(currentNode, nodeName);
+		GModelBuilder.instance().getNodes().add(dstGNode);
+		// Add a connection
+		String conId = originNode.getId() + dstGNode.getId();
+		String conLabel = "offset: " + currentNode.hashCode();
+		GConnection con = new GConnection(conId, conLabel, originNode, dstGNode);
+		GModelBuilder.instance().getConnections().add(con);
+		originNode.getConnectedTo().add(dstGNode);
+
+		// Update map
+		nodeMap.put(nodeName + ":" + startPos, dstGNode);
+
+		visitChildren(currentNode, dstGNode);
+	}
+
+	String getName(Node currentNode) {
+		String name = new String("for(" + currentNode.getValue() + ")");
+		return name;
+	}
+
+	GSubMethodNode createGNode(Node currentNode, String nodeName) {
+		String dstGNodeId = nodeName + currentNode.hashCode();
+		return new GSubMethodNode(dstGNodeId, nodeName);
+	}
+
+	public void setSourceNode(GMethodNode methDecl) {
+		this.originMNode = methDecl;
+	}
+
+	public void setSubMSourceNode(GSubMethodNode subMNode) {
+		this.originSubMNode = subMNode;
+	}
+
+	void addSrcNodeInstanceList() {
+		// if the list does not contain the origin node, add it to the instance list
+		if (this.originMNode != null) {
+			if (!(GModelBuilder.instance().getNodes().contains(this.originMNode))) {
+				GModelBuilder.instance().getNodes().add(this.originMNode);
+			}
+		}
+		else if(this.originSubMNode != null) {
+			if (!(GModelBuilder.instance().getNodes().contains(this.originSubMNode))) {
+				GModelBuilder.instance().getNodes().add(this.originSubMNode);
+			}
+		}
+	}
+
+	void visitChildren(Node currentNode, GSubMethodNode rootGNode) {
+		Enumeration<?> e = currentNode.children();
+		while(e.hasMoreElements()) {
+			Node childNode = (Node) e.nextElement();
+			if (childNode.getLabel().toString().equals("ASSIGNMENT")) {
+				AssignmentStatementTreeNodeAnalyzer assignState = new AssignmentStatementTreeNodeAnalyzer(currentNode, childNode);
+				assignState.setSubMSourceNode(rootGNode);
+				assignState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("BREAK_STATEMENT")) {
+				BreakStatementTreeNodeAnalyzer breakState = new BreakStatementTreeNodeAnalyzer(currentNode, childNode);
+				breakState.setSubMSourceNode(rootGNode);
+				breakState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("CATCH_CLAUSE")) {
+				CatchClauseTreeNodeAnalyzer catchCl = new CatchClauseTreeNodeAnalyzer(currentNode, childNode);
+				catchCl.setSubMSourceNode(rootGNode);
+				catchCl.analyze();
+			}
+			if (childNode.getLabel().toString().equals("CONTINUE_STATEMENT")) {
+				ContinueStatemenTreeNodeAnalyzer contState = new ContinueStatemenTreeNodeAnalyzer(currentNode, childNode);
+				contState.setSubMSourceNode(rootGNode);
+				contState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("DO_STATEMENT")) {
+				DoStatementTreeNodeAnalyzer doState = new DoStatementTreeNodeAnalyzer(currentNode, childNode);
+				doState.setSubMSourceNode(rootGNode);
+				doState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("FINALLY")) {
+				FinallyTreeNodeAnalyzer finAnalyzer = new FinallyTreeNodeAnalyzer(currentNode, childNode);
+				finAnalyzer.setSubMSourceNode(rootGNode);
+				finAnalyzer.analyze();
+			}
+			if (childNode.getLabel().toString().equals("FOREACH_STATEMENT")) {
+				EnhancedForEachStatementTreeNodeAnalyzer enhForState = new EnhancedForEachStatementTreeNodeAnalyzer(
+						currentNode, childNode);
+				enhForState.setSubMSourceNode(rootGNode);
+				enhForState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("FOR_STATEMENT")) {
+				ForStatementTreeNodeAnalyzer forState = new ForStatementTreeNodeAnalyzer(currentNode, childNode);
+				forState.setSubMSourceNode(rootGNode);
+				forState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("IF_STATEMENT")) {
+				IfStatementTreeNodeAnalyzer ifState = new IfStatementTreeNodeAnalyzer(currentNode, childNode);
+				ifState.setSubMSourceNode(rootGNode);
+				ifState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("METHOD_INVOCATION")) {
+				MethodInvocationTreeNodeAnalyzer methodInv = new MethodInvocationTreeNodeAnalyzer(currentNode,
+						childNode);
+				methodInv.setSubMSourceNode(rootGNode);
+				methodInv.analyze();
+			}
+			if (childNode.getLabel().toString().equals("POSTFIX_EXPRESSION")) {
+				PostfixExpressionTreeNodeAnalyzer postfixExpr = new PostfixExpressionTreeNodeAnalyzer(currentNode, childNode);
+				postfixExpr.setSubMSourceNode(rootGNode);
+				postfixExpr.analyze();
+			}
+			if (childNode.getLabel().toString().equals("RETURN_STATEMENT")) {
+				ReturnStatementTreeNodeAnalyzer returnState = new ReturnStatementTreeNodeAnalyzer(currentNode,
+						childNode);
+				returnState.setSubMSourceNode(rootGNode);
+				returnState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("TRY_STATEMENT")) {
+				TryStatementTreeNodeAnalyzer tryState = new TryStatementTreeNodeAnalyzer(currentNode, childNode);
+				tryState.setSubMSourceNode(rootGNode);
+				tryState.analyze();
+			}
+			if (childNode.getLabel().toString().equals("VARIABLE_DECLARATION_STATEMENT")) {
+				VariableDeclarationStatementTreeNodeAnalyzer varDecl = new VariableDeclarationStatementTreeNodeAnalyzer(
+						currentNode, childNode);
+				varDecl.setSubMSourceNode(rootGNode);
+				varDecl.analyze();
+			}
+			if (childNode.getLabel().toString().equals("WHILE_STATEMENT")) {
+				WhileStatementTreeNodeAnalyzer whileState = new WhileStatementTreeNodeAnalyzer(currentNode, childNode);
+				whileState.setSubMSourceNode(rootGNode);
+				whileState.analyze();
+			}
+		}
+
+	}
+}

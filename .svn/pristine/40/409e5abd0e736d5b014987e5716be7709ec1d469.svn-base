@@ -1,0 +1,49 @@
+/*
+ * @(#) MethodVisitor.java
+ *
+ * Copyright 2015-2018 The Software Analysis Laboratory
+ * Computer Science, The University of Nebraska at Omaha
+ * 6001 Dodge Street, Omaha, NE 68182.
+ */
+package visitor;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.PackageDeclaration;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+public class SelectedClassNameGrabber extends ASTVisitor {
+	public String pkgNodeName = null;
+	public String classNodeName = null;
+	public IPackageFragment iPackage = null;
+
+	public SelectedClassNameGrabber(String classNodeName, IPackageFragment iPackage) {
+		this.classNodeName = classNodeName;
+		this.iPackage = iPackage;
+	}
+	
+	/**
+	 * A type declaration is the union of a class declaration
+	 * and an interface declaration.
+	 */
+	@Override
+	public boolean visit(TypeDeclaration typeDecl) {
+		if(typeDecl.getName().getFullyQualifiedName().equals(this.classNodeName)) {
+			pkgNodeName = iPackage.getElementName();
+		}
+		return true;
+	}
+
+	
+
+	public static ASTNode getOuterClass(ASTNode node) {
+		do {
+			// Keep searching if this node is not null and
+			// it is not a type declaration node and
+			// it is a child of compilation unit node.
+			node = node.getParent();
+		} while (node != null && node.getNodeType() != ASTNode.TYPE_DECLARATION && //
+				((AbstractTypeDeclaration) node).isPackageMemberTypeDeclaration());
+		return node;
+	}
+}

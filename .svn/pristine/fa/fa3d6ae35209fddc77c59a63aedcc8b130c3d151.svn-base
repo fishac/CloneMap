@@ -1,0 +1,75 @@
+package visitor;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+
+import graph.builder.GModelBuilder;
+import graph.model.GConnection;
+import graph.model.GNode;
+import graph.model.node.GClassNode;
+import graph.model.node.GMethodNode;
+import graph.model.node.GPackageNode;
+import graph.model.node.GSubMethodNode;
+
+public class PackageClassDeclarationVisitor extends ASTVisitor {
+	
+	GPackageNode originNode = null;
+	Map<String, GNode>	nodeMap	= new HashMap<String, GNode>();
+	public IPackageFragment iPackage = null;
+	
+	public boolean visit(TypeDeclaration typeDecl) {
+		addSrcNodeInstanceList();
+		addConnection(originNode, typeDecl);
+		return true;
+	}
+	
+	void addConnection(GPackageNode originNode, ASTNode astNode) {
+		String nodeName = getName(astNode);
+		int startPos = astNode.getStartPosition();
+		// Add a node
+		GNode dstGNode = createGNode(astNode, nodeName);
+		GModelBuilder.instance().getNodes().add(dstGNode);	
+		// Add a connection
+		String conId = originNode.getId() + dstGNode.getId();
+		String conLabel = "offset: " + astNode.getStartPosition();
+		GConnection con = new GConnection(conId, conLabel, originNode, dstGNode);
+		GModelBuilder.instance().getConnections().add(con);
+		originNode.getConnectedTo().add(dstGNode);
+		// Update map
+		nodeMap.put(nodeName + ":" + startPos, dstGNode);
+	}
+	String getName(ASTNode astNode) {
+		if (astNode instanceof TypeDeclaration) {
+			return ((TypeDeclaration) astNode).getName().getFullyQualifiedName();
+		} else {
+			return ((MethodDeclaration) astNode).getName().getFullyQualifiedName();
+		}
+	}
+	
+	GNode createGNode(ASTNode astNode, String nodeName) {
+		String dstGNodeId = nodeName + astNode.getStartPosition();
+		if (astNode instanceof TypeDeclaration) {
+			return new GClassNode(dstGNodeId, nodeName);
+		} else {
+			return new GPackageNode(dstGNodeId, nodeName);
+		}
+	}
+	
+	public void setSourceNode(String pkg) {
+		this.originNode = new GPackageNode(pkg, pkg);
+	}
+	void addSrcNodeInstanceList() {
+		//if the list does not contain the origin node, set the origin node to position 0
+		if(!(GModelBuilder.instance().getNodes().contains(this.originNode))) {
+			GModelBuilder.instance().getNodes().add(this.originNode);
+		}
+	}
+}

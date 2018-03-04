@@ -1,0 +1,102 @@
+package treenode;
+
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.ForStatement;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.eclipse.zest.core.widgets.Graph;
+import org.eclipse.zest.core.widgets.GraphNode;
+
+import ch.uzh.ifi.seal.changedistiller.treedifferencing.Node;
+import graph.builder.GModelBuilder;
+import graph.model.GConnection;
+import graph.model.GNode;
+import graph.model.node.GMethodNode;
+import graph.model.node.GSubMethodNode;
+import util.UtilNode;
+
+public class SwitchCaseTreeNodeAnalyzer extends ASTVisitor {
+
+	GMethodNode originMNode = null;
+	GSubMethodNode originSubMNode = null;
+	Map<String, GNode> nodeMap = new HashMap<String, GNode>();
+	Node rootNode = null;
+	Node currentNode = null;
+	ArrayList<String> caseList = null;
+
+	public SwitchCaseTreeNodeAnalyzer(Node rootNode, Node currentNode, ArrayList<String> caseList) {
+		this.caseList = caseList;
+		this.rootNode = rootNode;
+		this.currentNode = currentNode;
+	}
+
+	public void analyze() {
+		addSrcNodeInstanceList();
+		if (originMNode != null)
+			addConnection(originMNode, rootNode, currentNode, caseList);
+		else if (originSubMNode != null) {
+			addConnection(originSubMNode, rootNode, currentNode, caseList);
+		}
+	}
+
+	void addConnection(GNode originNode, Node rootNode, Node currentNode, ArrayList<String> caseList) {
+		String nodeName = getName(currentNode, caseList);
+		int startPos = rootNode.hashCode();
+		// Add a node
+		GSubMethodNode dstGNode = createGNode(rootNode, nodeName);
+		GModelBuilder.instance().getNodes().add(dstGNode);
+		// Add a connection
+		String conId = originNode.getId() + dstGNode.getId();
+		String conLabel = "offset: " + rootNode.hashCode();
+		GConnection con = new GConnection(conId, conLabel, originNode, dstGNode);
+		GModelBuilder.instance().getConnections().add(con);
+		originNode.getConnectedTo().add(dstGNode);
+
+		// Update map
+		nodeMap.put(nodeName + ":" + startPos, dstGNode);
+	}
+
+	String getName(Node currentNode, ArrayList<String> caseList) {
+		String name = new String("");
+		for(int i = 0; i < caseList.size(); i++) {
+			name = name + caseList.get(i);
+		}
+		return name;
+	}
+
+	GSubMethodNode createGNode(Node rootNode, String nodeName) {
+		String dstGNodeId = nodeName + rootNode.hashCode();
+		return new GSubMethodNode(dstGNodeId, nodeName);
+	}
+
+	public void setSourceNode(GMethodNode methDecl) {
+		this.originMNode = methDecl;
+	}
+
+	public void setSubMSourceNode(GSubMethodNode subMNode) {
+		this.originSubMNode = subMNode;
+	}
+
+	void addSrcNodeInstanceList() {
+		// if the list does not contain the origin node, set the origin node to
+		// position 0
+		if (this.originMNode != null) {
+			if (!(GModelBuilder.instance().getNodes().contains(this.originMNode))) {
+				GModelBuilder.instance().getNodes().add(this.originMNode);
+			}
+		}
+		else if(this.originSubMNode != null) {
+			if (!(GModelBuilder.instance().getNodes().contains(this.originSubMNode))) {
+				GModelBuilder.instance().getNodes().add(this.originSubMNode);
+			}
+		}
+	}
+}

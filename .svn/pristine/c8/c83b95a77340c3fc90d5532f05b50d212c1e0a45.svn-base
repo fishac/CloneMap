@@ -1,0 +1,174 @@
+/*
+ * @(#) View.java
+ *
+ */
+package view;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.annotation.PostConstruct;
+
+import org.eclipse.e4.ui.di.Focus;
+import org.eclipse.e4.ui.services.EMenuService;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseWheelListener;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.zest.core.viewers.GraphViewer;
+import org.eclipse.zest.core.widgets.Graph;
+import org.eclipse.zest.layouts.LayoutStyles;
+import org.eclipse.zest.layouts.algorithms.RadialLayoutAlgorithm;
+import org.eclipse.zest.layouts.algorithms.TreeLayoutAlgorithm;
+
+import analysis.ProjectAnalyzerSelectedClass;
+import analysis.ProjectAnalyzerSelectedClassNames;
+import analysis.ProjectAnalyzerSelectedMethod;
+import analysis.ProjectAnalyzerSelectedMethodNames;
+import analysis.ProjectAnalyzerSelectedPackage;
+import graph.builder.GModelBuilder;
+import graph.model.GNode;
+import graph.model.node.GClassNode;
+import graph.model.node.GMethodNode;
+import graph.model.node.GPackageNode;
+import graph.provider.GLabelProvider;
+import graph.provider.GNodeContentProvider;
+
+public class CloneMapView {
+   public final static String VIEW_ID                 = "clonemap.partdescriptor.clonemapview";
+   final static String        POPUP_MENU_ID           = "clonemap.popupmenu.mypopupmenu";
+
+   private static GraphViewer gViewer;
+   private static int         layout                  = 0;
+   private String             selectedMethod          = null;
+   private String             selectedMethodClass     = null;
+   private String             selectedMethodPkg       = null;
+   private String             selectedClass           = null;
+   private String             selectedClassPkg        = null;
+   private String             selectedPkg             = null;
+   public String              selectedNodeName        = null;
+   public ArrayList<String>   listOfNodesClickedNames = new ArrayList<String>();
+   public ArrayList<GNode>    listOfNodesClicked      = new ArrayList<GNode>();
+
+   public GraphViewer getGraphViewer() {
+      return this.gViewer;
+   }
+
+   @PostConstruct
+   public void createControls(Composite parent, EMenuService menuService) {
+      gViewer = new GraphViewer(parent, SWT.BORDER);
+      gViewer.setContentProvider(new GNodeContentProvider());
+      gViewer.setLabelProvider(new GLabelProvider());
+      gViewer.setLayoutAlgorithm(new TreeLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
+      gViewer.applyLayout();
+
+      Graph graph = gViewer.getGraphControl();
+      menuService.registerContextMenu(graph, POPUP_MENU_ID);
+      graph.addMouseListener(new MouseAdapter() {
+         public void mouseDoubleClick(MouseEvent e) {
+            ISelection selection = gViewer.getSelection();
+            Object selected = ((IStructuredSelection) selection).getFirstElement();
+            // Check which node is selected by the double click
+            if (selected instanceof GMethodNode) {
+               selectedNodeName = ((GMethodNode) selected).getName();
+               listOfNodesClicked.add((GMethodNode) selected);
+               listOfNodesClickedNames.add(selectedNodeName);
+               ProjectAnalyzerSelectedMethodNames analyzeForNames = new ProjectAnalyzerSelectedMethodNames(selectedNodeName);
+               analyzeForNames.analyze();
+
+               selectedMethod = ((GMethodNode) selected).getName();
+               selectedMethodClass = analyzeForNames.classNodeName;
+               selectedMethodPkg = analyzeForNames.pkgNodeName;
+
+               System.out.println("\nMethod Name Clicked: " + selectedMethod);
+               System.out.println("Class Containing Method: " + selectedMethodClass);
+               System.out.println("Package Containing Class: " + selectedMethodPkg);
+
+               GModelBuilder.instance().reset();
+               ((GMethodNode) selected).resetConnection();
+
+               setDataAnalyzeGraphMethod();
+               gViewer.setInput(GModelBuilder.instance().getNodes());
+
+            } else if (selected instanceof GClassNode) {
+               selectedNodeName = ((GClassNode) selected).getName();
+               listOfNodesClicked.add((GClassNode) selected);
+               listOfNodesClickedNames.add(selectedNodeName);
+               ProjectAnalyzerSelectedClassNames analyzeForNames = new ProjectAnalyzerSelectedClassNames(selectedNodeName);
+               analyzeForNames.analyze();
+
+               System.out.println("\n(GClassNode) Mouse Double click: " + selected);
+               selectedClass = ((GClassNode) selected).getName();
+               selectedClassPkg = analyzeForNames.pkgNodeName;
+
+               System.out.println("Class Name Clicked: " + selectedClass);
+               System.out.println("Package Containing Class: " + selectedClassPkg);
+
+               GModelBuilder.instance().reset();
+               ((GClassNode) selected).resetConnection();
+
+               setDataAnalyzeGraphClass();
+
+               gViewer.setInput(GModelBuilder.instance().getNodes());
+
+            } else if (selected instanceof GPackageNode) {
+               selectedNodeName = ((GPackageNode) selected).getName();
+               listOfNodesClicked.add((GPackageNode) selected);
+               listOfNodesClickedNames.add(selectedNodeName);
+               ProjectAnalyzerSelectedClassNames analyzeForNames = new ProjectAnalyzerSelectedClassNames(selectedNodeName);
+               analyzeForNames.analyze();
+
+               System.out.println("\n(GPackageNode) Mouse Double click: " + selected);
+               selectedPkg = ((GPackageNode) selected).getName();
+
+               System.out.println("Selected Package: " + selectedPkg);
+
+               GModelBuilder.instance().reset();
+               ((GPackageNode) selected).resetConnection();
+
+               setDataAnalyzeGraphPackage();
+
+               gViewer.setInput(GModelBuilder.instance().getNodes());
+            }
+         }
+      });
+   };
+
+   private void setDataAnalyzeGraphMethod() {
+      ProjectAnalyzerSelectedMethod analyzerSelectedMethod = new ProjectAnalyzerSelectedMethod();
+      analyzerSelectedMethod.setSelectedMethod(this.selectedMethod);
+      analyzerSelectedMethod.setSelectedMethodClass(this.selectedMethodClass);
+      analyzerSelectedMethod.setSelectedMethodPkg(this.selectedMethodPkg);
+      analyzerSelectedMethod.analyze();
+   }
+
+   private void setDataAnalyzeGraphClass() {
+      ProjectAnalyzerSelectedClass analyzerSelectedClass = new ProjectAnalyzerSelectedClass();
+      analyzerSelectedClass.setSelectedClass(this.selectedClass);
+      analyzerSelectedClass.setSelectedClassPkg(this.selectedClassPkg);
+      analyzerSelectedClass.analyze();
+   }
+
+   private void setDataAnalyzeGraphPackage() {
+      ProjectAnalyzerSelectedPackage analyzerSelectedPackage = new ProjectAnalyzerSelectedPackage(this.selectedPkg);
+      analyzerSelectedPackage.analyze();
+   }
+
+   public void update() {
+      gViewer.setInput(GModelBuilder.instance().getNodes());
+      if (layout % 2 == 0)
+         gViewer.setLayoutAlgorithm(new TreeLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
+      else
+         gViewer.setLayoutAlgorithm(new RadialLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
+      layout++;
+   }
+
+   @Focus
+   public void setFocus() {
+      this.gViewer.getGraphControl().setFocus();
+   }
+}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="ASCII"?>
+<fragment:ModelFragments xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:basic="http://www.eclipse.org/ui/2010/UIModel/application/descriptor/basic" xmlns:commands="http://www.eclipse.org/ui/2010/UIModel/application/commands" xmlns:fragment="http://www.eclipse.org/ui/2010/UIModel/fragment" xmlns:menu="http://www.eclipse.org/ui/2010/UIModel/application/ui/menu" xmi:id="_oDqLAL46EeWS1vppwIGIuQ">
+  <fragments xsi:type="fragment:StringModelFragment" xmi:id="_q08m4L46EeWS1vppwIGIuQ" featurename="commands" parentElementId="org.eclipse.e4.legacy.ide.application">
+    <elements xsi:type="commands:Command" xmi:id="_2gK34L46EeWS1vppwIGIuQ" elementId="clonemap.command.viewastnodes" commandName="View AST Nodes"/>
+    <elements xsi:type="commands:Command" xmi:id="_jDlOEMDdEea6fohqoDpsug" elementId="clonemap.command.goback" commandName="Go Back"/>
+  </fragments>
+  <fragments xsi:type="fragment:StringModelFragment" xmi:id="_hivOsNKqEeaCGKfazQIH3Q" featurename="handlers" parentElementId="org.eclipse.e4.legacy.ide.application">
+    <elements xsi:type="commands:Handler" xmi:id="_miMyUNKqEeaCGKfazQIH3Q" elementId="clonemap.handler.1" contributionURI="bundleclass://clonemap/handler.ASTZestHandler" command="_2gK34L46EeWS1vppwIGIuQ"/>
+    <elements xsi:type="commands:Handler" xmi:id="_n6VC4NKqEeaCGKfazQIH3Q" elementId="clonemap.handler.2" contributionURI="bundleclass://clonemap/handler.GoBackHandler" command="_jDlOEMDdEea6fohqoDpsug"/>
+  </fragments>
+  <fragments xsi:type="fragment:StringModelFragment" xmi:id="_qS0xQL46EeWS1vppwIGIuQ" featurename="descriptors" parentElementId="org.eclipse.e4.legacy.ide.application">
+    <elements xsi:type="basic:PartDescriptor" xmi:id="_x0-UEL46EeWS1vppwIGIuQ" elementId="clonemap.partdescriptor.clonemapview" label="Clone Map View" iconURI="platform:/plugin/clonemap/icons/sample.png" contributionURI="bundleclass://clonemap/view.CloneMapView">
+      <menus xsi:type="menu:PopupMenu" xmi:id="_vX3qMMDdEea6fohqoDpsug" elementId="clonemap.popupmenu.mypopupmenu" label="My Popup Menu">
+        <children xsi:type="menu:HandledMenuItem" xmi:id="_yVB-4MDdEea6fohqoDpsug" elementId="clonemap.handledmenuitem.goback" label="Go Back" command="_jDlOEMDdEea6fohqoDpsug"/>
+      </menus>
+    </elements>
+  </fragments>
+  <fragments xsi:type="fragment:StringModelFragment" xmi:id="_JIUHMNKqEeaCGKfazQIH3Q" featurename="menuContributions" parentElementId="org.eclipse.e4.legacy.ide.application">
+    <elements xsi:type="menu:MenuContribution" xmi:id="_M_9HINKqEeaCGKfazQIH3Q" elementId="clonemap.menucontribution.1" positionInParent="after=window" parentId="org.eclipse.ui.main.menu">
+      <children xsi:type="menu:Menu" xmi:id="_RbznYNKqEeaCGKfazQIH3Q" elementId="clonemap.menu.clonemap" label="CloneMap">
+        <children xsi:type="menu:HandledMenuItem" xmi:id="_TSjGkNKqEeaCGKfazQIH3Q" elementId="clonemap.handledmenuitem.showclonegraph" label="Show Clone Graph" command="_2gK34L46EeWS1vppwIGIuQ"/>
+      </children>
+    </elements>
+  </fragments>
+</fragment:ModelFragments>

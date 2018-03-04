@@ -1,0 +1,11 @@
+package graph.model.node;
+
+import graph.model.GNode;
+
+public class GSubMethodNode extends GNode {
+
+	public GSubMethodNode(String id, String name) {
+		super(id, name);
+	}
+
+}

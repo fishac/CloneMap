@@ -1,0 +1,120 @@
+package visitor;
+
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+
+import graph.model.GNode;
+import graph.model.node.GMethodNode;
+
+import ch.uzh.ifi.seal.changedistiller.treedifferencing.Node;
+import treenode.*;
+
+public class MethodDeclarationVisitor extends ASTVisitor {
+	GMethodNode methodGNode;
+	Map<String, GNode> nodeMap = new HashMap<String, GNode>();
+	private String selectedMethod = "";
+	private String classPath = null;
+
+	public MethodDeclarationVisitor(String selectedMethod, String classPath) {
+		this.selectedMethod = selectedMethod;
+		this.classPath = classPath;
+	}
+
+	public boolean visit(MethodDeclaration methodDecl) {
+		if (methodDecl.getName().getFullyQualifiedName().equals(selectedMethod)) {
+
+			if (classPath != null) {
+				visitInternals(selectedMethod, classPath, methodDecl);
+			}
+			return false;
+		}
+		return super.visit(methodDecl);
+	}
+
+	public static ASTNode getOuterClass(ASTNode node) {
+		do {
+			// Keep searching if this node is not null and
+			// it is not a type declaration node and
+			// it is a child of compilation unit node.
+			node = node.getParent();
+		} while (node != null && node.getNodeType() != ASTNode.TYPE_DECLARATION && //
+				((AbstractTypeDeclaration) node).isPackageMemberTypeDeclaration());
+		return node;
+	}
+
+	void visitInternals(String selectedMethod, String classPath, MethodDeclaration methodDecl) {
+
+		Node methodTreeNode = MethodBodyChange.getInst().getMethodNode(classPath, selectedMethod);
+
+		GMethodNode sourceNode = new GMethodNode(selectedMethod + methodDecl.getStartPosition(), selectedMethod);
+
+		Enumeration<?> e = methodTreeNode.children();
+		while (e.hasMoreElements()) {
+			Node subNode = (Node) e.nextElement();
+			
+			if (subNode.getLabel().toString().equals("DO_STATEMENT")) {
+				DoStatementTreeNodeAnalyzer doState = new DoStatementTreeNodeAnalyzer(methodTreeNode, subNode);
+				doState.setSourceNode(sourceNode);
+				doState.analyze();
+			}
+			if (subNode.getLabel().toString().equals("FOREACH_STATEMENT")) {
+				EnhancedForEachStatementTreeNodeAnalyzer enhForState = new EnhancedForEachStatementTreeNodeAnalyzer(
+						methodTreeNode, subNode);
+				enhForState.setSourceNode(sourceNode);
+				enhForState.analyze();
+			}
+			if (subNode.getLabel().toString().equals("FOR_STATEMENT")) {
+				ForStatementTreeNodeAnalyzer forState = new ForStatementTreeNodeAnalyzer(methodTreeNode, subNode);
+				forState.setSourceNode(sourceNode);
+				forState.analyze();
+			}
+			if (subNode.getLabel().toString().equals("IF_STATEMENT")) {
+				IfStatementTreeNodeAnalyzer ifState = new IfStatementTreeNodeAnalyzer(methodTreeNode, subNode);
+				ifState.setSourceNode(sourceNode);
+				ifState.analyze();
+			}
+			if (subNode.getLabel().toString().equals("METHOD_INVOCATION")) {
+				MethodInvocationTreeNodeAnalyzer methodInv = new MethodInvocationTreeNodeAnalyzer(methodTreeNode,
+						subNode);
+				methodInv.setSourceNode(sourceNode);
+				methodInv.analyze();
+			}
+			if (subNode.getLabel().toString().equals("RETURN_STATEMENT")) {
+				ReturnStatementTreeNodeAnalyzer returnState = new ReturnStatementTreeNodeAnalyzer(methodTreeNode,
+						subNode);
+				returnState.setSourceNode(sourceNode);
+				returnState.analyze();
+			}
+			
+			if (subNode.getLabel().toString().equals("SWITCH_STATEMENT")) {
+				SwitchStatementTreeNodeAnalyzer switchState = new SwitchStatementTreeNodeAnalyzer(methodTreeNode,
+						subNode);
+				switchState.setSourceNode(sourceNode);
+				switchState.analyze();
+			}
+			
+			if (subNode.getLabel().toString().equals("TRY_STATEMENT")) {
+				TryStatementTreeNodeAnalyzer tryState = new TryStatementTreeNodeAnalyzer(methodTreeNode, subNode);
+				tryState.setSourceNode(sourceNode);
+				tryState.analyze();
+			}
+			if (subNode.getLabel().toString().equals("VARIABLE_DECLARATION_STATEMENT")) {
+				VariableDeclarationStatementTreeNodeAnalyzer varDecl = new VariableDeclarationStatementTreeNodeAnalyzer(
+						methodTreeNode, subNode);
+				varDecl.setSourceNode(sourceNode);
+				varDecl.analyze();
+			}
+			if (subNode.getLabel().toString().equals("WHILE_STATEMENT")) {
+				WhileStatementTreeNodeAnalyzer whileState = new WhileStatementTreeNodeAnalyzer(methodTreeNode, subNode);
+				whileState.setSourceNode(sourceNode);
+				whileState.analyze();
+			}
+		}
+	}
+}
